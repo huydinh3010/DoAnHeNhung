@@ -19,6 +19,7 @@ void setup() {
   pinMode(BTNMODE, INPUT);
   pinMode(BTNSEND, INPUT);
   Serial.begin(115200);
+  Serial.setTimeout(2000);
 }
 
 // đọc và lưu tín hiệu thu được
@@ -28,11 +29,21 @@ void decodeIR(){
     detachInterrupt(digitalPinToInterrupt(RXPINIR)); // bỏ qua ngắt
     rawLen = len - 1;
     len = 0; // đặt lại biến chạy
-    attachInterrupt(digitalPinToInterrupt(RXPINIR), rxIR_Interrupt_Handler, CHANGE); // bật chế độ ngắt
+    Serial.print("code:");
+    Serial.print(rawLen);
+    Serial.print(" ");
+    for(int i = 0; i < rawLen; i++){
+      Serial.print(irBuffer[i]);
+      Serial.print(" ");
+    }
+    Serial.println();
+    //attachInterrupt(digitalPinToInterrupt(RXPINIR), rxIR_Interrupt_Handler, CHANGE); // bật chế độ ngắt
   }
   digitalWrite(LEDPIN, LOW);
   delay(500);
   digitalWrite(LEDPIN, HIGH);
+  Serial.print("mode:");
+  Serial.println('0');
 }
 
 // phát tín hiệu hồng ngoại
@@ -48,44 +59,41 @@ void sendIRCode(){
   irsend.space(0);
 }
 
-void loop() {
+void readSerial(){
   if(Serial.available() > 0){
-    int data = Serial.read();
-    if(data == '0'){
-      mode = !mode;
-      len = 0;
+    char cmd[6];
+    memset(cmd, 0, sizeof(cmd));
+    Serial.readBytes(cmd, 5);
+    if(strcmp(cmd,"mode:") == 0){
+      byte b = Serial.read();
+      mode = b - '0';
       if(mode == 0){ // doi che do
+        digitalWrite(LEDPIN, LOW);
         detachInterrupt(digitalPinToInterrupt(RXPINIR));
-        Serial.print('0');
       } else{
+        len = 0;
+        digitalWrite(LEDPIN, HIGH);
         attachInterrupt(digitalPinToInterrupt(RXPINIR), rxIR_Interrupt_Handler, CHANGE);
-        Serial.print('1');
+        decodeIR();
       }
-      
-      delay(1000);
-    }
-    else if(data == '1'){
+    } else if(strcmp(cmd,"code:") == 0){
+      int len = Serial.parseInt(); 
+      if(len > MAXLEN || len <= 0) return;
+      for(int i = 0; i < len; i++){
+        int d = Serial.parseInt();
+        if (d <= 0) return;
+        irBuffer[i] = d;
+      }
       if(mode == 0){
         sendIRCode();
         delay(500);
       }
     }
-    else if(data == '2'){
-      if(mode == 0){
-        Serial.print('0');
-      }
-      else {
-        Serial.print('1');
-      }
-    }
   }
-  
-  if(mode == 0){
-    digitalWrite(LEDPIN, LOW);
-  } else {
-    digitalWrite(LEDPIN, HIGH);
-    decodeIR();
-  }
+}
+
+void loop() {
+  readSerial();
 }
 
 // ct xử lý ngắt trên chân số 2
