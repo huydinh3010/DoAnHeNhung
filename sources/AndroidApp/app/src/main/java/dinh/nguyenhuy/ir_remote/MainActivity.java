@@ -1,173 +1,111 @@
 package dinh.nguyenhuy.ir_remote;
 
+
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
+import android.app.Dialog;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.net.wifi.ScanResult;
-import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.View.OnClickListener;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
+import android.widget.ListView;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.net.Socket;
-import java.util.List;
+import com.google.firebase.database.FirebaseDatabase;
 
-public class MainActivity extends AppCompatActivity {
-    Button btnMode;
-    Button btnSendIR;
-    Button btnConnect;
-    EditText edtIp;
+import java.util.ArrayList;
 
-    String ipAddress;
-    int mode = 0;
-    Socket socket;
-    DataOutputStream dos;
-    DataInputStream dis;
+public class MainActivity extends AppCompatActivity implements FirebaseCallbackEvent{
+    ListView listItem;
+    Button btnAddDevice;
+    Section secsion;
+    ArrayList<String> listViewData = new ArrayList<>();
+    ArrayAdapter<String> adapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        btnMode = findViewById(R.id.btnMode);
-        btnSendIR = findViewById(R.id.btnSendIR);
-        btnConnect = findViewById(R.id.btnConnect);
-        edtIp = findViewById(R.id.edtIp);
+        listItem = findViewById(R.id.list_item);
+        adapter = new ArrayAdapter<String>(getApplication(), R.layout.custom_list, R.id.textView, listViewData);
+        listItem.setAdapter(adapter);
 
-        btnConnect.setOnClickListener(new OnClickListener() {
+        btnAddDevice = findViewById(R.id.btnAddDevice);
+
+        secsion = Section.getInstance();
+
+        secsion.registerCallback(this);
+
+        listItem.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onClick(View view) {
-                ipAddress = edtIp.getText().toString();
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try{
-                            socket = new Socket(ipAddress, 5000);
-                            dos = new DataOutputStream(socket.getOutputStream());
-                            dis = new DataInputStream(socket.getInputStream());
-                            new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    while(socket != null || socket.isConnected()){
-                                        try{
-                                            byte data = dis.readByte();
-                                            Log.e("wifi_esp", String.valueOf(data));
-                                            if(data == '0'){
-                                                runOnUiThread(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        btnMode.setEnabled(true);
-                                                        btnMode.setText("Mode 0");
-                                                        btnSendIR.setEnabled(true);
-                                                    }
-                                                });
-                                            } else if(data == '1'){
-                                                runOnUiThread(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        btnMode.setEnabled(true);
-                                                        btnMode.setText("Mode 1");
-                                                        btnSendIR.setEnabled(false);
-                                                    }
-                                                });
-                                            }
-                                        } catch (Exception e){
-                                            break;
-                                        }
-                                    }
-                                    runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            btnConnect.setEnabled(true);
-                                            btnConnect.setText("Connect");
-                                            btnMode.setEnabled(false);
-                                            btnSendIR.setEnabled(false);
-                                            Toast.makeText(getApplicationContext(), "Disconnected!", Toast.LENGTH_LONG);
-                                        }
-                                    });
-                                }
-                            }).start();
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    btnConnect.setEnabled(false);
-                                    btnConnect.setText("Connected!");
-                                    Toast.makeText(getApplicationContext(), "Connected!", Toast.LENGTH_LONG);
-                                }
-                            });
-
-                        } catch (Exception e){
-                            e.printStackTrace();
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Toast.makeText(getApplicationContext(), "Can't connect!", Toast.LENGTH_LONG);
-                                }
-                            });
-                        }
-                    }
-                }).start();
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                Intent intent = new Intent();
+                intent.setClass(view.getContext(), SecondActivity.class);
+                intent.putExtra("name", listViewData.get(i));
+                startActivity(intent);
             }
         });
 
-        btnMode.setOnClickListener(new OnClickListener() {
+        btnAddDevice.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(socket == null || !socket.isConnected()){
-                    Toast.makeText(getApplicationContext(), "You must connect first!", Toast.LENGTH_LONG);
-                }
-                else{
-                    btnMode.setEnabled(false);
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            try{
-                                dos.writeChar('0');
-                                dos.flush();
-                            } catch (Exception e){
-                                e.printStackTrace();
-                            }
-                        }
-                    }).start();
-
-                }
-            }
-        });
-
-        btnSendIR.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(socket == null || !socket.isConnected()){
-                    Toast.makeText(getApplicationContext(), "You must connect first!", Toast.LENGTH_LONG);
-                }
-                else{
-                    if(mode == 0){
-                        new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                try{
-                                    dos.writeChar('1');
-                                    dos.flush();
-                                } catch (Exception e){
-                                    e.printStackTrace();
-                                }
-                            }
-                        }).start();
-                    }
-                }
+                showDialog();
             }
         });
     }
 
+    protected void onPause(){
+        super.onPause();
+    }
+
+    protected void onResume(){
+        super.onResume();
+        onIRDataChange();
+        secsion.registerCallback(this);
+    }
+
+    @Override
+    public void onDeviceStatusChange() {
+
+    }
+
+    @Override
+    public void onIRDataChange() {
+        listViewData.clear();
+        for(IRData irData : secsion.getIrDatas()){
+            listViewData.add(irData.getName());
+        }
+        adapter.notifyDataSetChanged();
+    }
+
+    private void showDialog(){
+        final Dialog dialog = new Dialog(this);
+        dialog.setTitle("Create new device");
+        dialog.setContentView(R.layout.dialog_layout);
+        dialog.findViewById(R.id.btnNext).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String _name = ((EditText)dialog.findViewById(R.id.editText)).getText().toString();
+                if(_name.length() == 0) return;
+                secsion.getIrDatas().add(new IRData(_name,new ArrayList<String>(), new ArrayList<String>()));
+                Intent intent = new Intent();
+                intent.setClass(view.getContext(), SecondActivity.class);
+                intent.putExtra("name", _name);
+                startActivity(intent);
+                dialog.cancel();
+            }
+        });
+
+        dialog.findViewById(R.id.btnCancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog.cancel();
+            }
+        });
+        dialog.show();
+    }
 }

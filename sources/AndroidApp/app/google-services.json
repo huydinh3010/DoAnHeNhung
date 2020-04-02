@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "247543505450",
+    "firebase_url": "https://irremote-4f614.firebaseio.com",
+    "project_id": "irremote-4f614",
+    "storage_bucket": "irremote-4f614.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:247543505450:android:0a190ce1d28dc350925953",
+        "android_client_info": {
+          "package_name": "dinh.nguyenhuy.ir_remote"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "247543505450-ul8evr56do6naqcr9oof34shj5vibd0u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "dinh.nguyenhuy.ir_remote",
+            "certificate_hash": "abd6ebcd47910c419a51049e4a06a92cf1a5c267"
+          }
+        },
+        {
+          "client_id": "247543505450-r5l7alonrojpmlsqmkenpneqj575gi4h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwKv6x-9qxf1tPOC3RvPbqH-yBjqtvEhM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "247543505450-r5l7alonrojpmlsqmkenpneqj575gi4h.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
