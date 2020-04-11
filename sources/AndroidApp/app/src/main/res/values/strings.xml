@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">IR_Remote</string>
+    <string name="FK_Mode">mode</string>
+    <string name="FK_ReadCode">ircode</string>
+    <string name="FK_SendCode">scode</string>
+    <string name="FK_TimeSchedule">time</string>
 </resources>
