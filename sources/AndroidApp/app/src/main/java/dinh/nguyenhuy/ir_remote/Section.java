@@ -118,14 +118,15 @@ public class Section {
     }
 
     public void sendIR(String ircode){
-        deviceDataRef.child("mode").setValue(0);
-        deviceDataRef.child("ircode").setValue(ircode);
+        deviceDataRef.child("scode").setValue(ircode);
+        deviceDataRef.child("mode").setValue(2);
     }
 
     public void sendIR(String ircode, String time){
-        deviceDataRef.child("mode").setValue(0);
+        deviceDataRef.child("scode").setValue(ircode);
+        deviceDataRef.child("mode").setValue(2);
         deviceDataRef.child("time").setValue(time);
-        deviceDataRef.child("ircode").setValue(ircode);
+
     }
 
     public void setIRData(String path, String name, String code){
@@ -133,10 +134,14 @@ public class Section {
     }
 
     public void clearIRBuffer(){
-        deviceDataRef.child("scode").setValue("");
+        deviceDataRef.child("ircode").setValue("");
     }
 
     public void readIR(){
         deviceDataRef.child("mode").setValue(1);
+    }
+
+    public void setIdleMode(){
+        deviceDataRef.child("mode").setValue(0);
     }
 }

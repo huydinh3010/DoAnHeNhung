@@ -73,6 +73,7 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
     }
 
     protected void onResume(){
+        state = 0;
         super.onResume();
         onIRDataChange();
         secsion.registerCallback(this);
@@ -80,13 +81,17 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
 
     @Override
     public void onDeviceStatusChange() {
-        if(secsion.getDeviceState().getScode().length() > 0){
-            btnDialog.setText("OK");
-            btnDialog.setEnabled(true);
-            edtDialog.setVisibility(View.VISIBLE);
-            state = 1;
-        } else{
-            state = 0;
+        try{
+            if(secsion.getDeviceState().getIrcode().length() > 0 && secsion.getDeviceState().getMode() == 0){
+                btnDialog.setText("OK");
+                btnDialog.setEnabled(true);
+                edtDialog.setVisibility(View.VISIBLE);
+                state = 1;
+            } else{
+                state = 0;
+            }
+        } catch(Exception e){
+            e.printStackTrace();
         }
     }
 
@@ -112,7 +117,7 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
                     btnDialog.setEnabled(false);
                 } else if(state == 1){
                     if(edtDialog.getText().toString().length() == 0) return;
-                    secsion.setIRData(name, edtDialog.getText().toString(), secsion.getDeviceState().getScode());
+                    secsion.setIRData(name, edtDialog.getText().toString(), secsion.getDeviceState().getIrcode());
                     secsion.clearIRBuffer();
                     dialog.cancel();
                 }
@@ -122,6 +127,8 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
         dialog.findViewById(R.id.btnCancel).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                secsion.setIdleMode();
+                state = 0;
                 dialog.cancel();
             }
         });
