@@ -1,21 +1,24 @@
 #include <ESP8266WiFi.h>
 #include <FirebaseArduino.h>
+#include <IRsend.h>
 #define FIREBASE_HOST "irremote-4f614.firebaseio.com"
 #define FIREBASE_AUTH "KPv43AaJnuulZW8YvMNwKIZkvZj9wOie365KjzPg"
-#define WIFI_SSID "Huy Dinh"
+#define WIFI_SSID "VNPT-Binh"
 #define WIFI_PASSWORD "0123456789"
 
 #define MAXLEN 500
 #define RXPINIR 5
 #define IRLEDPIN 13
 #define LEDPIN 15
+#define WFLED 0
 
-volatile unsigned long last = 0;
+
+volatile unsigned int last = 0;
 volatile unsigned int irBuffer[MAXLEN];
 volatile unsigned int len = 0;
 volatile int val = 0;
 String data = "";
-int rawLen = 0;
+uint16_t rawLen = 0;
 byte mode = 0;
 
 
@@ -32,12 +35,16 @@ bool ir_available(){ // trả về true nếu đã thu được tín hiệu hồ
   delay(10);
   if(len == 0 || val == 0) return false;
   unsigned long delta_t = micros() - last;  
-  if(delta_t < 1000000L) return false;
+  if(delta_t < 200000L) return false;
   return true;
 }
 
 void readIR(){
   if(len > 0){ // tín hiệu đã được đọc vào mảng
+    if(len < 20){
+      len = 0;
+      return;
+    }
     detachInterrupt(digitalPinToInterrupt(RXPINIR));
     rawLen = len - 1;
     len = 0; // đặt lại biến chạy
@@ -161,20 +168,23 @@ void sendIR(){ // phát tín hiệu hồng ngoại
       j += 2;
     }
   }
+//  Serial.println(rawLen);
+//  for(int i = 0; i < rawLen; i++){
+//    Serial.print(irBuffer[i]); Serial.print(" ");
+//  }
+//  Serial.println();
+  
   // phát tín hiệu hồng ngoại
+  IRsend irsend(IRLEDPIN);
+  irsend.enableIROut(38);
   for (int i = 0; i < rawLen; i++){
     if(i & 1){
-      digitalWrite(IRLEDPIN, LOW);
+      irsend.space(irBuffer[i] * 50);
     } else{
-      digitalWrite(IRLEDPIN, HIGH);
+      irsend.mark(irBuffer[i] * 50);
     }
-    unsigned long t = micros();
-    unsigned int d = irBuffer[i] * 50;
-    while(micros() - t < d){
-      yield();
-    }
-    digitalWrite(IRLEDPIN, LOW);
   }
+  digitalWrite(IRLEDPIN, LOW);
   Firebase.setFloat("device/mode", 0); // cập nhật chế độ lên firebase
 }
 
@@ -199,21 +209,26 @@ void setMode(byte _m){ // chuyển chế độ (mode)
 
 void setup() {
   pinMode(IRLEDPIN, OUTPUT);
+  pinMode(WFLED, OUTPUT);
   pinMode(RXPINIR, INPUT);
   pinMode(LEDPIN, OUTPUT);
   digitalWrite(LEDPIN, LOW);
   digitalWrite(IRLEDPIN, LOW);
+  digitalWrite(WFLED, HIGH);
   Serial.begin(9600);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
+  digitalWrite(WFLED, LOW);
   Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
   Firebase.stream("/device");
   //attachInterrupt(digitalPinToInterrupt(RXPINIR), rxIR_Interrupt_Handler, CHANGE);
 }
 
 void loop() {
+//  delay(5000);
+//  sendIR();
   if(mode == 1 && ir_available()){
     readIR();
   }
