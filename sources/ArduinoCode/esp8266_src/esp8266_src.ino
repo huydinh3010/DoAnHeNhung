@@ -1,9 +1,14 @@
 #include <ESP8266WiFi.h>
 #include <FirebaseArduino.h>
 #include <IRsend.h>
+#include <NTPClient.h>
+#include <Ticker.h>
+#include <WiFiUdp.h>
+
+
 #define FIREBASE_HOST "irremote-4f614.firebaseio.com"
 #define FIREBASE_AUTH "KPv43AaJnuulZW8YvMNwKIZkvZj9wOie365KjzPg"
-#define WIFI_SSID "VNPT-Binh"
+#define WIFI_SSID "Huy Dinh"
 #define WIFI_PASSWORD "0123456789"
 
 #define MAXLEN 500
@@ -13,6 +18,11 @@
 #define WFLED 0
 
 
+void sendIR(String);
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "asia.pool.ntp.org", 25200, 3600000L);
+
 volatile unsigned int last = 0;
 volatile unsigned int irBuffer[MAXLEN];
 volatile unsigned int len = 0;
@@ -21,6 +31,34 @@ String data = "";
 uint16_t rawLen = 0;
 byte mode = 0;
 
+class SenderSchedule{
+  public:
+    SenderSchedule(){};
+    ~SenderSchedule(){};
+    int pos;
+    unsigned int duration;
+    String data;
+    int loop;
+    Ticker ticker;
+    
+    void set(){
+      ticker.once(duration, std::bind(&SenderSchedule::doSend, this));  
+    }
+    
+    void stop(){
+      ticker.detach();
+    }
+
+    void doSend(){
+      unsigned long _t = timeClient.getEpochTime() + loop * 3600;
+      sendIR(this->data);
+      if(loop != 0){
+        Firebase.setFloat("device/sduration/s" + String(pos), _t); 
+      } else {
+        Firebase.setFloat("device/sduration/s" + String(pos), 0);
+      }
+    };
+} schedule[10];
 
 void ICACHE_RAM_ATTR rxIR_Interrupt_Handler() { // hàm xử lý ngắt
   val = digitalRead(RXPINIR);
@@ -126,8 +164,9 @@ void readIR(){
   }
 }
 
-void sendIR(){ // phát tín hiệu hồng ngoại
+void sendIR(String data){ // phát tín hiệu hồng ngoại
   if(data.length() < 2) return;
+  detachInterrupt(digitalPinToInterrupt(RXPINIR));
   byte b0;
   int i = 0;
   byte b1 = (byte)data[i++] - 60;
@@ -197,8 +236,7 @@ void setMode(byte _m){ // chuyển chế độ (mode)
   } else if(_m == 2){
     mode = 2;
     digitalWrite(LEDPIN, LOW);
-    detachInterrupt(digitalPinToInterrupt(RXPINIR));
-    sendIR();
+    sendIR(data);
     delay(500);
   } else {
     mode = 0;
@@ -220,6 +258,8 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
+  timeClient.begin();
+  for (int i = 0; i < 10; i++) schedule[i].pos = i;
   digitalWrite(WFLED, LOW);
   Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
   Firebase.stream("/device");
@@ -229,6 +269,7 @@ void setup() {
 void loop() {
 //  delay(5000);
 //  sendIR();
+  timeClient.update();
   if(mode == 1 && ir_available()){
     readIR();
   }
@@ -245,6 +286,18 @@ void loop() {
            String s = payload["scode"];
            data = s;
            Serial.println(data);
+           unsigned long _ct = timeClient.getEpochTime();
+           for(int i = 0; i < 10; i++){
+             String _s = payload["schedule/s" + String(i)];
+             float f = payload["sduration/s" + String(i)];
+             if(f < _ct){
+              Firebase.setFloat("device/sduration/s" + String(i), 1);
+              return; 
+             }
+             schedule[i].data = _s;
+             schedule[i].duration = (unsigned long)f - _ct;
+             schedule[i].set();
+           }
         }
         else if(path == "/mode"){
            int _m = event.getInt("data");
@@ -253,6 +306,26 @@ void loop() {
         else if(path == "/scode"){
           data = event.getString("data");
           Serial.println(data);
+        } else {
+          if(path.substring(0, 9) == "/schedule"){
+            int pos = path.substring(11, 12).toInt();
+            String _s = event.getString("data");
+            schedule[pos].data = _s;
+          } else if(path.substring(0, 10) == "/sduration"){
+            int pos = path.substring(12, 13).toInt();
+            schedule[pos].data = event.getString("data");
+            unsigned long _t = (unsigned long)event.getFloat("data");
+            unsigned long _ct = timeClient.getEpochTime();
+            if(_t < _ct){
+              Firebase.setFloat("device/sduration/s" + String(pos), 1);
+              return;
+            }
+            schedule[pos].duration = _t - _ct;
+            schedule[pos].set();
+          } else if(path.substring(0, 6) == "/sloop"){
+            int pos = path.substring(8, 9).toInt();
+            schedule[pos].loop = event.getInt("data");
+          }
         }
      }
   }   

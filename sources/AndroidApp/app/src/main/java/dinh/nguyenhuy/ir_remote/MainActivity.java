@@ -12,6 +12,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ListView;
 
 import com.google.firebase.database.FirebaseDatabase;
@@ -22,6 +23,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseCallbackE
     ListView listItem;
     Button btnAddDevice;
     Section secsion;
+    ImageButton imgBtn;
     ArrayList<String> listViewData = new ArrayList<>();
     ArrayAdapter<String> adapter;
 
@@ -35,6 +37,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseCallbackE
         listItem.setAdapter(adapter);
 
         btnAddDevice = findViewById(R.id.btnAddDevice);
+        imgBtn = findViewById(R.id.imgBtn);
 
         secsion = Section.getInstance();
 
@@ -54,6 +57,14 @@ public class MainActivity extends AppCompatActivity implements FirebaseCallbackE
             @Override
             public void onClick(View view) {
                 showDialog();
+            }
+        });
+        imgBtn.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent();
+                intent.setClass(view.getContext(), ThirdActivity.class);
+                startActivity(intent);
             }
         });
     }
@@ -81,6 +92,12 @@ public class MainActivity extends AppCompatActivity implements FirebaseCallbackE
         }
         adapter.notifyDataSetChanged();
     }
+
+    @Override
+    public void onDataScheduleChange() {
+
+    }
+
 
     private void showDialog(){
         final Dialog dialog = new Dialog(this);

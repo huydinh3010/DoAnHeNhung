@@ -21,4 +21,13 @@
         android:layout_alignParentRight="true"
         android:layout_marginRight="10dp"
         android:text="Send"/>
+
+    <ImageButton
+        android:id = "@+id/imgBtn"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_toLeftOf="@+id/btn"
+        android:layout_marginRight="20dp"
+        android:layout_marginTop="5dp"
+        android:background="@android:drawable/ic_lock_idle_alarm"/>
 </RelativeLayout>

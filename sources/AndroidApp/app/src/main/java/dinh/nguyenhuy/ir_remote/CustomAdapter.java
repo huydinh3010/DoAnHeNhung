@@ -2,11 +2,13 @@ package dinh.nguyenhuy.ir_remote;
 
 import android.app.Activity;
 import android.content.Context;
+import android.media.Image;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ListAdapter;
 import android.widget.TextView;
 
@@ -15,11 +17,13 @@ import java.util.ArrayList;
 public class CustomAdapter extends BaseAdapter implements ListAdapter {
     private ArrayList<String> list = new ArrayList<>();
     private Context context;
-    private ButtonListViewEvent buttonListViewEvent;
-    public CustomAdapter(ArrayList<String> list, Context context, ButtonListViewEvent buttonListViewEvent){
+    private ButtonListViewEvent buttonEvent;
+    private ButtonListViewEvent imgButtonEvent;
+    public CustomAdapter(ArrayList<String> list, Context context, ButtonListViewEvent buttonEvent, ButtonListViewEvent imgButtonEvent){
         this.list = list;
         this.context = context;
-        this.buttonListViewEvent = buttonListViewEvent;
+        this.buttonEvent = buttonEvent;
+        this.imgButtonEvent = imgButtonEvent;
     }
 
     @Override
@@ -51,13 +55,21 @@ public class CustomAdapter extends BaseAdapter implements ListAdapter {
 
         //Handle buttons and add onClickListeners
         Button callbtn= (Button)view.findViewById(R.id.btn);
-
+        ImageButton imageButton = (ImageButton) view.findViewById(R.id.imgBtn);
         callbtn.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                buttonListViewEvent.onClick(i);
+                buttonEvent.onClick(i);
             }
         });
+
+        imageButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                imgButtonEvent.onClick(i);
+            }
+        });
+
         view.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {

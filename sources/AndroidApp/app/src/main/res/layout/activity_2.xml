@@ -28,12 +28,21 @@
                 android:layout_alignParentRight="true"
                 android:gravity="right|center"
                 android:textAllCaps="false"
-                android:text="Add button"
                 android:textStyle="bold"
                 android:textColor="#FFFFFFFF"
                 android:drawableRight="@drawable/create_contact"
                 android:background="#FF00BA19"
                 android:textSize="25dp"/>
+
+            <ImageButton
+                android:id="@+id/imgBtn"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:textAllCaps="false"
+                android:textStyle="bold"
+                android:layout_marginTop="5dp"
+                android:layout_toLeftOf="@+id/btnAddButton"
+                android:background="@android:drawable/ic_lock_idle_alarm" />
 
         </RelativeLayout>
         <ListView
