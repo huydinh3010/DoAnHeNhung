@@ -11,13 +11,13 @@
         android:textColor="#FF0000FF"
         android:textSize="20dp"
         android:inputType="text"/>
-    <EditText
+    <AutoCompleteTextView
         android:id="@+id/editText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginRight="10dp"
         android:layout_marginLeft="10dp"
-        android:hint="Device name"
+        android:hint="Button name"
         android:visibility="gone"
         android:inputType="text"/>
     <RelativeLayout

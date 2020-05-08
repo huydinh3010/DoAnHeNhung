@@ -18,10 +18,10 @@
 #define WFLED 0
 
 
-void sendIR(String);
+bool sendIR(String);
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "asia.pool.ntp.org", 25200, 3600000L);
+NTPClient timeClient(ntpUDP, "asia.pool.ntp.org", 0, 3600000L);
 
 volatile unsigned int last = 0;
 volatile unsigned int irBuffer[MAXLEN];
@@ -39,6 +39,7 @@ class SenderSchedule{
     unsigned int duration;
     String data;
     int loop;
+    bool st = false;
     Ticker ticker;
     
     void set(){
@@ -49,14 +50,22 @@ class SenderSchedule{
       ticker.detach();
     }
 
-    void doSend(){
-      unsigned long _t = timeClient.getEpochTime() + loop * 3600;
-      sendIR(this->data);
+    void next(){
       if(loop != 0){
-        Firebase.setFloat("device/sduration/s" + String(pos), _t); 
+        Firebase.setString("device/sstatus/s" + String(pos), "DONE");
+        delay(200);
+        Firebase.setInt("device/sduration/s" + String(pos), duration); 
+        Firebase.setString("device/sstatus/s" + String(pos), "SET");
       } else {
-        Firebase.setFloat("device/sduration/s" + String(pos), 0);
+        Firebase.setString("device/sstatus/s" + String(pos), "DONE");
       }
+      st = false;
+    }
+    
+    void doSend(){
+      duration = (unsigned int)timeClient.getEpochTime() + loop * 3600;
+      sendIR(this->data);
+      st = true;
     };
 } schedule[10];
 
@@ -77,15 +86,50 @@ bool ir_available(){ // trả về true nếu đã thu được tín hiệu hồ
   return true;
 }
 
-void readIR(){
-  if(len > 0){ // tín hiệu đã được đọc vào mảng
+bool validateIRcode(String data){
+  if(data.length() < 2) return false;
+  byte b0;
+  int i = 0;
+  byte b1 = (byte)data[i++] - 60;
+  byte b2 = (byte)data[i++] - 60;
+  int len = b1 * 64 + b2;
+  if(len < 0) return false;
+  while(i < data.length()){
+    b0 = (byte)data[i++];
+    if(b0 == 33){
+      if(i > data.length() - 2) return false;
+      i++;
+      b0 = (byte)data[i++];
+      if(b0 == 34){
+        if(i > data.length() - 2) return false;
+        b1 = (byte)data[i++] - 60;
+        b2 = (byte)data[i++] - 60;
+        if(b1 > 32) return false;
+      }
+    } else if(b0 == 34){
+      if(i > data.length() - 2) return false;
+      b1 = (byte)data[i++] - 60;
+      b2 = (byte)data[i++] - 60;
+      if(b1 > 32) return false;
+    }
+  }
+  return true;
+}
+
+bool readIR(){
     if(len < 20){
       len = 0;
-      return;
+      return false;
     }
     detachInterrupt(digitalPinToInterrupt(RXPINIR));
     rawLen = len - 1;
     len = 0; // đặt lại biến chạy
+    for(int i = 0; i < rawLen; i++){
+      if(irBuffer[i] > 2100){
+        attachInterrupt(digitalPinToInterrupt(RXPINIR), rxIR_Interrupt_Handler, CHANGE);
+        return false;
+      }
+    }
     data = "";
     byte b1 = (byte)((rawLen & 0xFFC0) >> 6); // độ dài chuỗi
     byte b2 = (byte)(rawLen & 0x003F);
@@ -159,13 +203,12 @@ void readIR(){
       c = 0;
     }
     Serial.println(data);
-    Firebase.setString("device/ircode", data); // cập nhật mã tín hiệu đã đọc được
-    Firebase.setFloat("device/mode", 0);
-  }
+    mode = 0;
+    return true;
 }
 
-void sendIR(String data){ // phát tín hiệu hồng ngoại
-  if(data.length() < 2) return;
+bool sendIR(String data){ // phát tín hiệu hồng ngoại
+  if(data.length() < 2 || !validateIRcode(data)) return false;
   detachInterrupt(digitalPinToInterrupt(RXPINIR));
   byte b0;
   int i = 0;
@@ -180,11 +223,9 @@ void sendIR(String data){ // phát tín hiệu hồng ngoại
     if(b0 == 35){
       j = 1;
     } else if(b0 == 33){
-      if(i > data.length() - 2) return;
       c = (byte)data[i++] - 40;
       b0 = (byte)data[i++];
       if(b0 == 34){
-        if(i > data.length() - 2) return;
         b1 = (byte)data[i++] - 60;
         b2 = (byte)data[i++] - 60;
         t = b1 * 64 + b2;
@@ -196,7 +237,6 @@ void sendIR(String data){ // phát tín hiệu hồng ngoại
         j += 2;
       }
     } else if(b0 == 34){
-      if(i > data.length() - 2) return;
       b1 = (byte)data[i++] - 60;
       b2 = (byte)data[i++] - 60;
       t = b1 * 64 + b2;
@@ -207,11 +247,6 @@ void sendIR(String data){ // phát tín hiệu hồng ngoại
       j += 2;
     }
   }
-//  Serial.println(rawLen);
-//  for(int i = 0; i < rawLen; i++){
-//    Serial.print(irBuffer[i]); Serial.print(" ");
-//  }
-//  Serial.println();
   
   // phát tín hiệu hồng ngoại
   IRsend irsend(IRLEDPIN);
@@ -224,21 +259,29 @@ void sendIR(String data){ // phát tín hiệu hồng ngoại
     }
   }
   digitalWrite(IRLEDPIN, LOW);
-  Firebase.setFloat("device/mode", 0); // cập nhật chế độ lên firebase
+  mode = 0;
+  return true;
 }
 
-void setMode(byte _m){ // chuyển chế độ (mode)
-  if(_m == 1){
+void doCmd(String cmd){
+  if(cmd == "READ"){
+    Firebase.setString("device/cmd", "WAIT");
     mode = 1;
     len = 0;
     digitalWrite(LEDPIN, HIGH);
     attachInterrupt(digitalPinToInterrupt(RXPINIR), rxIR_Interrupt_Handler, CHANGE);
-  } else if(_m == 2){
+  } else if(cmd == "SEND"){
+    data = Firebase.getString("device/scode");
+    Firebase.setString("device/cmd", "WAIT");
     mode = 2;
     digitalWrite(LEDPIN, LOW);
-    sendIR(data);
+    if(sendIR(data)){
+      Firebase.setString("device/cmd", "SEND_OK");
+    }else {
+      Firebase.setString("device/cmd", "SEND_ERROR");
+    }
     delay(500);
-  } else {
+  } else if(cmd != "WAIT"){
     mode = 0;
     digitalWrite(LEDPIN, LOW);
     detachInterrupt(digitalPinToInterrupt(RXPINIR));
@@ -259,19 +302,53 @@ void setup() {
     delay(500);
   }
   timeClient.begin();
+
   for (int i = 0; i < 10; i++) schedule[i].pos = i;
   digitalWrite(WFLED, LOW);
   Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
   Firebase.stream("/device");
-  //attachInterrupt(digitalPinToInterrupt(RXPINIR), rxIR_Interrupt_Handler, CHANGE);
+  delay(500);
+  timeClient.update();
+  Firebase.setString("device/cmd", "RESET");
+   unsigned long _ct = timeClient.getEpochTime();
+   for(int i = 0; i < 10; i++){
+     String _s = Firebase.getString("device/schedule/s" + String(i));
+     int f = Firebase.getInt("device/sduration/s" + String(i));
+     int lp = Firebase.getInt("device/sloop/s" + String(i));
+     String ss = Firebase.getString("device/sstatus/s" + String(i));
+     if(ss == "DONE" || ss == "" || ss == "OK" || ss == "CANCEL"){
+      schedule[i].stop();
+      continue;
+     }     
+     if(f < _ct){
+      Firebase.setString("device/sstatus/s" + String(i), "TIME_ERROR");
+      continue; 
+     }
+     if(!validateIRcode(_s)){
+      Firebase.setString("device/sstatus/s" + String(i), "INVALID_IRCODE");
+      continue;
+     }
+     if(lp < 0 || lp > 24){
+      Firebase.setString("device/sstatus/s" + String(i), "INVALID_LOOP");
+      continue;
+     }
+     schedule[i].data = _s;
+     schedule[i].duration = (unsigned long)f - _ct;
+     schedule[i].set();
+     Firebase.setString("device/sstatus/s" + String(i), "WAIT");
+   }
 }
 
 void loop() {
 //  delay(5000);
 //  sendIR();
   timeClient.update();
-  if(mode == 1 && ir_available()){
-    readIR();
+  for(int i = 0;i < 10; i++){
+    if(schedule[i].st) schedule[i].next();
+  }
+  if(mode == 1 && ir_available() && readIR()){
+    Firebase.setString("device/ircode", data);
+    Firebase.setString("device/cmd", "READ_OK");
   }
   if (Firebase.available()) { // bắt sự kiện từ firebase
      FirebaseObject event = Firebase.readEvent();
@@ -279,53 +356,46 @@ void loop() {
      eventType.toLowerCase();
      if(eventType == "put"){
         String path = event.getString("path");
-        if(path == "/"){
-           JsonVariant payload = event.getJsonVariant("data");
-           int _m = payload["mode"];
-           setMode((byte)_m);
-           String s = payload["scode"];
-           data = s;
-           Serial.println(data);
-           unsigned long _ct = timeClient.getEpochTime();
-           for(int i = 0; i < 10; i++){
-             String _s = payload["schedule/s" + String(i)];
-             float f = payload["sduration/s" + String(i)];
-             if(f < _ct){
-              Firebase.setFloat("device/sduration/s" + String(i), 1);
-              return; 
-             }
-             schedule[i].data = _s;
-             schedule[i].duration = (unsigned long)f - _ct;
-             schedule[i].set();
-           }
-        }
-        else if(path == "/mode"){
-           int _m = event.getInt("data");
-           setMode((byte)_m);
-        }
-        else if(path == "/scode"){
-          data = event.getString("data");
-          Serial.println(data);
+        Serial.println(path);
+        if(path == "/cmd"){
+           String cmd = Firebase.getString("device/cmd");
+           doCmd(cmd);
         } else {
-          if(path.substring(0, 9) == "/schedule"){
-            int pos = path.substring(11, 12).toInt();
-            String _s = event.getString("data");
-            schedule[pos].data = _s;
-          } else if(path.substring(0, 10) == "/sduration"){
-            int pos = path.substring(12, 13).toInt();
-            schedule[pos].data = event.getString("data");
-            unsigned long _t = (unsigned long)event.getFloat("data");
+          if(path.substring(0, 10) == "/sduration" || path.substring(0,8) == "/sstatus"){
+            int pos = -1;
+            if(path.substring(0, 10) == "/sduration") pos = path.substring(12, 13).toInt();
+            else{
+              pos = path.substring(10, 11).toInt();
+              String ss = Firebase.getString("device/sstatus/s" + String(pos));
+              if(ss == ""){
+                schedule[pos].stop();
+                return;
+              }
+            }
+            String ss = Firebase.getString("device/sstatus/s" + String(pos));
+            if(ss != "SET") return;
+            unsigned long _t = Firebase.getInt("device/sduration/s" + String(pos));
             unsigned long _ct = timeClient.getEpochTime();
             if(_t < _ct){
-              Firebase.setFloat("device/sduration/s" + String(pos), 1);
+              Firebase.setString("device/sstatus/s" + String(pos), "TIME_ERROR");
+              return; 
+            }
+            String sd = Firebase.getString("device/schedule/s" + String(pos));
+            if(!validateIRcode(sd)){
+              Firebase.setString("device/sstatus/s" + String(pos), "INVALID_IRCODE");
+              return; 
+            }
+            int lp = Firebase.getInt("device/sloop/s" + String(pos));
+            if(lp < 0 || lp > 24){
+              Firebase.setString("device/sstatus/s" + String(pos), "INVALID_LOOP");
               return;
             }
             schedule[pos].duration = _t - _ct;
+            schedule[pos].data = sd;
+            schedule[pos].loop = lp;
             schedule[pos].set();
-          } else if(path.substring(0, 6) == "/sloop"){
-            int pos = path.substring(8, 9).toInt();
-            schedule[pos].loop = event.getInt("data");
-          }
+            Firebase.setString("device/sstatus/s" + String(pos), "WAIT");
+          } 
         }
      }
   }   

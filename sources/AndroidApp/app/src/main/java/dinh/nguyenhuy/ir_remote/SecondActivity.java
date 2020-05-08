@@ -7,9 +7,14 @@ import android.app.TimePickerDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
@@ -33,32 +38,32 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
     Button btnAddBtn;
     ImageButton imgBtn;
     TextView txtName;
-    Section secsion;
+    Section section;
     String name;
+    String type;
+    String fullname;
     ArrayList<String> listViewData = new ArrayList<>();
     CustomAdapter adapter;
-    int state = 0;
-    EditText edtDialog;
+    AutoCompleteTextView edtDialog;
     Button btnDialog;
     @Override
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_2);
         Intent intent = getIntent();
-        secsion = Section.getInstance();
-        secsion.registerCallback(this);
+        //section = Section.getInstance();
+        //section.registerCallback(this);
 
         name = intent.getStringExtra("name");
-
-        for(String btnName : secsion.getBtnNamesByDevice(name)){
-            listViewData.add(btnName);
-        }
+        type = intent.getStringExtra("type");
+        if(type == null) type = "OTH";
+        fullname = type + ": " + name;
 
         listBtn = findViewById(R.id.list_btn);
         adapter = new CustomAdapter(listViewData, getApplication(), new ButtonListViewEvent() {
             @Override
             public void onClick(int position) {
-                secsion.sendIR(secsion.getIRCodesByDevice(name).get(position));
+                section.sendIR(section.getIRCodesByDevice(fullname).get(position));
             }
         }, new ButtonListViewEvent() {
             @Override
@@ -70,12 +75,20 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
         btnAddBtn =findViewById(R.id.btnAddButton);
         imgBtn = findViewById(R.id.imgBtn);
         txtName = findViewById(R.id.txtName);
-        txtName.setText(name);
+        txtName.setText(fullname);
 
         listBtn.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
 
+            }
+        });
+
+        listBtn.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener(){
+            @Override
+            public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
+                section.removeIR(fullname, section.getBtnNamesByDevice(fullname).get(i));
+                return true;
             }
         });
 
@@ -100,22 +113,57 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
     }
 
     protected void onResume(){
-        state = 0;
         super.onResume();
-        onIRDataChange();
-        secsion.registerCallback(this);
+        Handler mainHandler = new Handler(getMainLooper());
+        final FirebaseCallbackEvent firebaseCallbackEvent = this;
+        Runnable myRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try{
+                    while(!Section.isCreated) {
+                        Thread.sleep(10);
+                    }
+                    section = Section.getInstance();
+                    section.registerCallback(firebaseCallbackEvent);
+                    onIRDataChange();
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        };
+        mainHandler.post(myRunnable);
     }
 
     @Override
     public void onDeviceStatusChange() {
         try{
-            if(secsion.getDeviceState().getIrcode().length() > 0 && secsion.getDeviceState().getMode() == 0){
-                btnDialog.setText("OK");
-                btnDialog.setEnabled(true);
-                edtDialog.setVisibility(View.VISIBLE);
-                state = 1;
-            } else{
-                state = 0;
+            if(section.isCmdChange()){
+                if(section.getDeviceState().getCmd().equals("READ_OK")){
+                    btnDialog.setText("OK");
+                    edtDialog.setVisibility(View.VISIBLE);
+                    edtDialog.addTextChangedListener(new TextWatcher() {
+                        @Override
+                        public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                        }
+
+                        @Override
+                        public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                            btnDialog.setEnabled(edtDialog.getText().length() > 0);
+                        }
+
+                        @Override
+                        public void afterTextChanged(Editable editable) {
+
+                        }
+                    });
+                } else if(section.getDeviceState().getCmd().equals("SEND_ERROR")){
+                    Toast.makeText(this, "SEND_ERROR", Toast.LENGTH_LONG).show();
+                } else if(section.getDeviceState().getCmd().equals("RESET")){
+                    Toast.makeText(this, "Device reset", Toast.LENGTH_LONG).show();
+                } else if(section.getDeviceState().getCmd().equals("READ_ERROR")){
+                    Toast.makeText(this, "READ_ERROR", Toast.LENGTH_LONG).show();
+                }
             }
         } catch(Exception e){
             e.printStackTrace();
@@ -125,9 +173,10 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
     @Override
     public void onIRDataChange() {
         listViewData.clear();
-        for(String btnName : secsion.getBtnNamesByDevice(name)){
+        for(String btnName : section.getBtnNamesByDevice(fullname)){
             listViewData.add(btnName);
         }
+        adapter.setList(listViewData);
         adapter.notifyDataSetChanged();
     }
 
@@ -139,28 +188,54 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
     private void showDialog2(){
         final Dialog dialog = new Dialog(this);
         dialog.setContentView(R.layout.dialog_layout_2);
-        edtDialog = dialog.findViewById(R.id.editText);
         btnDialog = dialog.findViewById(R.id.btnRead);
+        ArrayList<String> listBtnNames = new ArrayList<>();
+        switch (type){
+            case "AC":
+                listBtnNames.add("ON");
+                listBtnNames.add("OFF");
+                listBtnNames.add("TEMP +");
+                listBtnNames.add("TEMP -");
+                break;
+            case "TV":
+                listBtnNames.add("ON");
+                listBtnNames.add("OFF");
+                listBtnNames.add("VOL +");
+                listBtnNames.add("VOL -");
+                break;
+            case "FAN":
+                listBtnNames.add("ON");
+                listBtnNames.add("OFF");
+                listBtnNames.add("SPEED +");
+                listBtnNames.add("SPEED -");
+                break;
+            case "OTH":
+                listBtnNames.add("ON");
+                listBtnNames.add("OFF");
+                break;
+        }
+        edtDialog = dialog.findViewById(R.id.editText);
+        edtDialog.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_single_choice, listBtnNames));
         btnDialog.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(state == 0){
-                    secsion.readIR();
-                    btnDialog.setEnabled(false);
-                } else if(state == 1){
-                    if(edtDialog.getText().toString().length() == 0) return;
-                    secsion.setIRData(name, edtDialog.getText().toString(), secsion.getDeviceState().getIrcode());
-                    secsion.clearIRBuffer();
-                    dialog.cancel();
-                }
+                section.readIR();
+                btnDialog.setEnabled(false);
+                btnDialog.setOnClickListener(new View.OnClickListener(){
+                    public void onClick(View view1){
+                        Log.e("new button", edtDialog.getText().toString());
+                        section.setIRData(fullname, edtDialog.getText().toString(), section.getDeviceState().getIrcode());
+                        section.clearIRBuffer();
+                        dialog.cancel();
+                    }
+                });
             }
         });
 
         dialog.findViewById(R.id.btnCancel).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                secsion.setIdleMode();
-                state = 0;
+                section.cancelCmd();
                 dialog.cancel();
             }
         });
@@ -236,9 +311,9 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
                             Toast.makeText(view.getContext(), "Time difference must be greater than 0 and less than 30 days!", Toast.LENGTH_LONG).show();
                             return;
                         }
-                        String irname = name + "/" + secsion.getBtnNamesByDevice(name).get(pos);
-                        String ircode = secsion.getIRCodesByDevice(name).get(pos);
-                        if(secsion.sendIR(irname, ircode, date.getTime() / 1000, loop)){
+                        String irname = fullname + "/" + section.getBtnNamesByDevice(fullname).get(pos);
+                        String ircode = section.getIRCodesByDevice(fullname).get(pos);
+                        if(section.sendIR(irname, ircode, date.getTime() / 1000, loop)){
                             dialog.cancel();
                             Intent intent = new Intent();
                             intent.setClass(view.getContext(), ThirdActivity.class);

@@ -2,16 +2,16 @@ package dinh.nguyenhuy.ir_remote;
 
 public class DeviceState {
     private String ircode;
-    private int mode;
+    private String cmd;
     private String scode;
 
     public DeviceState(){
 
     }
 
-    public DeviceState(String ircode, int mode, String scode) {
+    public DeviceState(String ircode, String cmd, String scode) {
         this.ircode = ircode;
-        this.mode = mode;
+        this.cmd = cmd;
         this.scode = scode;
     }
 
@@ -23,12 +23,12 @@ public class DeviceState {
         this.ircode = ircode;
     }
 
-    public int getMode() {
-        return mode;
+    public String getCmd() {
+        return cmd;
     }
 
-    public void setMode(int mode) {
-        this.mode = mode;
+    public void setCmd(String cmd) {
+        this.cmd = cmd;
     }
 
     public String getScode() {

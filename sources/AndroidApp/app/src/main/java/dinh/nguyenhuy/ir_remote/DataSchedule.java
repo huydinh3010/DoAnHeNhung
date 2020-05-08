@@ -6,13 +6,15 @@ public class DataSchedule {
     private long time;
     private int loop;
     private int pos;
+    private String status;
 
-    public DataSchedule(int pos, String name, String data, long time, int loop) {
+    public DataSchedule(int pos, String name, String data, long time, int loop, String status) {
         this.pos = pos;
         this.name = name;
         this.data = data;
         this.time = time;
         this.loop = loop;
+        this.status = status;
     }
 
     public DataSchedule(int pos) {
@@ -57,5 +59,13 @@ public class DataSchedule {
 
     public void setLoop(int loop) {
         this.loop = loop;
+    }
+
+    public String getStatus(){
+        return status;
+    }
+
+    public void setStatus(String status){
+        this.status = status;
     }
 }

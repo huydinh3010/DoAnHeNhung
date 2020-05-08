@@ -4,8 +4,10 @@ package dinh.nguyenhuy.ir_remote;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.Dialog;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -14,19 +16,17 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
-
-import com.google.firebase.database.FirebaseDatabase;
+import android.widget.Spinner;
 
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements FirebaseCallbackEvent{
     ListView listItem;
     Button btnAddDevice;
-    Section secsion;
+    Section section;
     ImageButton imgBtn;
     ArrayList<String> listViewData = new ArrayList<>();
     ArrayAdapter<String> adapter;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,16 +39,19 @@ public class MainActivity extends AppCompatActivity implements FirebaseCallbackE
         btnAddDevice = findViewById(R.id.btnAddDevice);
         imgBtn = findViewById(R.id.imgBtn);
 
-        secsion = Section.getInstance();
 
-        secsion.registerCallback(this);
+        startService(new Intent(this, Section.class));
+
+        //section.registerCallback(this);
 
         listItem.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 Intent intent = new Intent();
                 intent.setClass(view.getContext(), SecondActivity.class);
-                intent.putExtra("name", listViewData.get(i));
+                String[] arrs = listViewData.get(i).split(": ", 2);
+                intent.putExtra("name", arrs[1]);
+                intent.putExtra("type", arrs[0]);
                 startActivity(intent);
             }
         });
@@ -75,8 +78,24 @@ public class MainActivity extends AppCompatActivity implements FirebaseCallbackE
 
     protected void onResume(){
         super.onResume();
-        onIRDataChange();
-        secsion.registerCallback(this);
+        Handler mainHandler = new Handler(getMainLooper());
+        final FirebaseCallbackEvent firebaseCallbackEvent = this;
+        Runnable myRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try{
+                    while(!Section.isCreated) {
+                        Thread.sleep(10);
+                    }
+                    section = Section.getInstance();
+                    section.registerCallback(firebaseCallbackEvent);
+                    onIRDataChange();
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        };
+        mainHandler.post(myRunnable);
     }
 
     @Override
@@ -87,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseCallbackE
     @Override
     public void onIRDataChange() {
         listViewData.clear();
-        for(IRData irData : secsion.getIrDatas()){
+        for(IRData irData : section.getIrDatas()){
             listViewData.add(irData.getName());
         }
         adapter.notifyDataSetChanged();
@@ -103,15 +122,25 @@ public class MainActivity extends AppCompatActivity implements FirebaseCallbackE
         final Dialog dialog = new Dialog(this);
         dialog.setTitle("Create new device");
         dialog.setContentView(R.layout.dialog_layout);
+
+        final Spinner spinner = dialog.findViewById(R.id.spinner);
+        String[] deviceTypes = {"Air Conditioner", "Tivi", "Fan", "Other"};
+        final String[] _types = {"AC", "TV", "FAN", "OTH"};
+        spinner.setAdapter(new ArrayAdapter<String>(this, R.layout.support_simple_spinner_dropdown_item, deviceTypes));
+
         dialog.findViewById(R.id.btnNext).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 String _name = ((EditText)dialog.findViewById(R.id.editText)).getText().toString();
+                int pos = spinner.getSelectedItemPosition();
+                String _fullname = _types[pos] + ": " + _name;
                 if(_name.length() == 0) return;
-                secsion.getIrDatas().add(new IRData(_name,new ArrayList<String>(), new ArrayList<String>()));
+                section.getIrDatas().add(new IRData(_fullname,new ArrayList<String>(), new ArrayList<String>()));
                 Intent intent = new Intent();
                 intent.setClass(view.getContext(), SecondActivity.class);
                 intent.putExtra("name", _name);
+                intent.putExtra("type", _types[pos]);
+                Log.e("new device", _fullname);
                 startActivity(intent);
                 dialog.cancel();
             }

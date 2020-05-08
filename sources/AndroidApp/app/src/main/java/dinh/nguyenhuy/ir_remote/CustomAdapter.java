@@ -15,7 +15,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 public class CustomAdapter extends BaseAdapter implements ListAdapter {
-    private ArrayList<String> list = new ArrayList<>();
+    private ArrayList<String> list;
     private Context context;
     private ButtonListViewEvent buttonEvent;
     private ButtonListViewEvent imgButtonEvent;
@@ -24,6 +24,10 @@ public class CustomAdapter extends BaseAdapter implements ListAdapter {
         this.context = context;
         this.buttonEvent = buttonEvent;
         this.imgButtonEvent = imgButtonEvent;
+    }
+
+    public void setList(ArrayList<String> list){
+        this.list = list;
     }
 
     @Override
@@ -70,12 +74,12 @@ public class CustomAdapter extends BaseAdapter implements ListAdapter {
             }
         });
 
-        view.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                notifyDataSetChanged();
-            }
-        });
+//        view.setOnClickListener(new View.OnClickListener(){
+//            @Override
+//            public void onClick(View v) {
+//                notifyDataSetChanged();
+//            }
+//        });
 
         return view;
     }
