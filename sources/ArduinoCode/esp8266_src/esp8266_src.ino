@@ -8,8 +8,8 @@
 
 #define FIREBASE_HOST "irremote-4f614.firebaseio.com"
 #define FIREBASE_AUTH "KPv43AaJnuulZW8YvMNwKIZkvZj9wOie365KjzPg"
-#define WIFI_SSID "Huy Dinh"
-#define WIFI_PASSWORD "0123456789"
+#define WIFI_SSID "ASUS_X00TD"
+#define WIFI_PASSWORD "huydinh3010"
 
 #define MAXLEN 500
 #define RXPINIR 5
