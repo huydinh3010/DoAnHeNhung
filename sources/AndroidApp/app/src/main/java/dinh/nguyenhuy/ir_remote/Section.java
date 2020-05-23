@@ -9,14 +9,17 @@ import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -47,10 +50,6 @@ public class Section extends Service {
     }
 
     public static Section getInstance(){
-//        if(instance == null){
-//            instance = new Section();
-//            isCreated = true;
-//        }
 
         return instance;
     }
@@ -65,6 +64,7 @@ public class Section extends Service {
         deviceDataRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                Log.e("Firebase", "onDeviceStatusChange");
                 updateDeviceState(dataSnapshot);
                 if(firebaseCallbackEvent != null){
                     firebaseCallbackEvent.onDeviceStatusChange();
@@ -82,6 +82,7 @@ public class Section extends Service {
         irDataRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                Log.e("Firebase", "onIRDataChange");
                 updateIRData(dataSnapshot);
                 if(firebaseCallbackEvent != null) firebaseCallbackEvent.onIRDataChange();
             }
@@ -131,6 +132,7 @@ public class Section extends Service {
         });
     }
 
+    @Nullable
     @Override
     public IBinder onBind(Intent arg0) {
         return null;
@@ -141,20 +143,50 @@ public class Section extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.e("service", "onCreate");
         context = getApplicationContext();
         instance = this;
+
         setup();
         //getInstance();
         notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         isCreated = true;
+        Log.e("service", "onCreate");
+//        IntentFilter intentFilter = new IntentFilter();
+//        intentFilter.addAction("dinh.nguyenhuy.ServiceStopped");
+//        registerReceiver(mIntentReceiver, intentFilter);
+
     }
+
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         Log.e("service", "onDestroy");
+//        Intent intent = new Intent("dinh.nguyenhuy.ServiceStopped");
+//        sendBroadcast(intent);
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            context.startService(new Intent(context, Section.class));
+//        } else {
+//            context.startService(new Intent(context, Section.class));
+//        }
     }
+
+//    private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//            String mAction = intent.getAction();
+//            Log.e("service", "onReceive: " + mAction);
+//            if (mAction.equals("dinh.nguyenhuy.ServiceStopped")) {
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                    context.startForegroundService(new Intent(context, Section.class));
+//                } else {
+//                    context.startService(new Intent(context, Section.class));
+//                }
+//                Log.e("service", "onReceive");
+//
+//            }
+//        }
+//    };
 
     public ArrayList<String> getScheduleName() {
         ArrayList<String> result = new ArrayList<>();
