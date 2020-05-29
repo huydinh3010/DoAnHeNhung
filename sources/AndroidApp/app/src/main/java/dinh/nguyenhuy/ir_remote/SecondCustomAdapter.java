@@ -88,6 +88,7 @@ public class SecondCustomAdapter extends BaseAdapter implements ListAdapter {
             txtStatus.setText(listStatus.get(i));
             txtStatus.setTextColor(0xFFFF0000);
         } else{
+            listName.set(i, "<Empty>");
             textView.setText("<Empty>");
             txtDate.setText("");
             txtTime.setText("");

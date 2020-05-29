@@ -1,5 +1,6 @@
 package dinh.nguyenhuy.ir_remote;
 
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.PersistableBundle;
@@ -8,6 +9,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
@@ -34,7 +36,26 @@ public class ThirdActivity extends AppCompatActivity implements FirebaseCallback
         listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
-                section.removeIRSchedule(i);
+                if(adapter.getItem(i).equals("<Empty>")) return false;
+                final int pos = i;
+                final AlertDialog.Builder alertDialog = new AlertDialog.Builder(view.getContext());
+                alertDialog.setTitle("Delete timer");
+                alertDialog.setMessage("Do you want to cancel and delete this timer?");
+                alertDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int which) {
+                        section.removeIRSchedule(pos);
+                    }
+                });
+
+                alertDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                    }
+                });
+
+                alertDialog.show();
                 return true;
             }
         });

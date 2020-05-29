@@ -1,6 +1,5 @@
 package dinh.nguyenhuy.ir_remote;
 
-import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.app.TimePickerDialog;
@@ -25,6 +24,7 @@ import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.text.DateFormat;
@@ -87,7 +87,25 @@ public class SecondActivity extends AppCompatActivity implements FirebaseCallbac
         listBtn.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener(){
             @Override
             public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
-                section.removeIR(fullname, section.getBtnNamesByDevice(fullname).get(i));
+                final int pos = i;
+                final AlertDialog.Builder alertDialog = new AlertDialog.Builder(SecondActivity.this);
+                alertDialog.setTitle("Delete button");
+                alertDialog.setMessage("Do you want to delete this button?");
+                alertDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int which) {
+                        section.removeIR(fullname, section.getBtnNamesByDevice(fullname).get(pos));
+                    }
+                });
+
+                alertDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                    }
+                });
+
+                alertDialog.show();
                 return true;
             }
         });

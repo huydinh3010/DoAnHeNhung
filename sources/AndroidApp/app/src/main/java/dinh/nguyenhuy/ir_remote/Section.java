@@ -394,7 +394,7 @@ public class Section extends Service {
         long diff = time - new Date().getTime() / 1000;
         if(diff < 0 || diff > 2592000 || loop < 0 || loop > 24) return false;
         for(int i = 0; i < 10; i++){
-            if(!dataSchedules[i].getStatus().equals("WAIT")){
+            if(!dataSchedules[i].getStatus().equals("WAIT") && !dataSchedules[i].getStatus().equals("SET")){
                 deviceDataRef.child("sname").child("s" + i).setValue(name);
                 deviceDataRef.child("schedule").child("s" + i).setValue(ircode);
                 deviceDataRef.child("sloop").child("s" + i).setValue(loop);
