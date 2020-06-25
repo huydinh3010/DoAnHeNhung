@@ -90,6 +90,19 @@ void ICACHE_RAM_ATTR rxIR_Interrupt_Handler() { // hàm xử lý ngắt
   len++;
 }
 
+void delay_uSec(unsigned long uSecs){
+  if (uSecs > 4) {
+      unsigned long start = micros();
+      unsigned long endMicros = start + uSecs - 4;
+      if (endMicros < start) { // Check if overflow
+          while (micros() > start) {
+          } // wait until overflow
+      }
+      while (micros() < endMicros) {
+      } // normal wait
+   }
+}
+
 bool ir_available(){ // trả về true nếu đã thu được tín hiệu hồng ngoại
   delay(10);
   if(len == 0 || val == 0) return false;
@@ -270,6 +283,17 @@ bool sendIR(String data){ // phát tín hiệu hồng ngoại
       irsend.mark(irBuffer[i] * 50);
     }
   }
+
+//  analogWriteFreq(38000);
+//  for (int i = 0; i < rawLen; i++){
+//    if(i & 1){
+//      digitalWrite(IRLEDPIN, LOW);
+//    } else{
+//      analogWrite(IRLEDPIN, 512);
+//    }
+//    delay_uSec(irBuffer[i] * 50);
+//  }
+
   digitalWrite(IRLEDPIN, LOW);
   mode = 0;
   return true;

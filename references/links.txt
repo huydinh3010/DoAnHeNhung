@@ -1,2 +1,3 @@
 https://learn.adafruit.com/infrared-transmit-and-receive-on-circuit-playground-express-in-c-plus-plus-2/understanding-infrared-signals
 https://www.laser.com/dhouston/ir-rf_fundamentals.html
+https://arduino-esp8266.readthedocs.io/en/latest/
